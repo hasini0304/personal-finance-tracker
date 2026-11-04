@@ -22,7 +22,10 @@ app.innerHTML = `
         <h2>Good day!</h2>
         <p>Here's how your money is looking.</p>
       </div>
-      <div class="month">November 2026</div>
+      <label class="month-filter">
+  Month
+  <input id="month-filter" type="month">
+</label>
     </section>
 
     <section class="summary">
@@ -82,6 +85,18 @@ app.innerHTML = `
 
 const form = document.querySelector('#transaction-form')
 const list = document.querySelector('#transaction-list')
+const monthFilter = document.querySelector('#month-filter')
+
+const today = new Date()
+const currentMonth =
+  `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+
+monthFilter.value = currentMonth
+monthFilter.addEventListener('change', renderTransactions)
+
+function getVisibleTransactions() {
+  return transactions.filter((item) => item.date.startsWith(monthFilter.value))
+}
 
 document.querySelector('#date').value =
   new Date().toISOString().slice(0, 10)
@@ -95,11 +110,12 @@ function formatMoney(amount) {
 }
 
 function renderTransactions() {
-  const income = transactions
+    const visibleTransactions = getVisibleTransactions()
+  const income = visibleTransactions
     .filter((item) => item.type === 'income')
     .reduce((total, item) => total + item.amount, 0)
 
-  const expenses = transactions
+  const expenses = visibleTransactions
     .filter((item) => item.type === 'expense')
     .reduce((total, item) => total + item.amount, 0)
 
@@ -114,7 +130,7 @@ function renderTransactions() {
 
   list.innerHTML = ''
 
-  transactions.forEach((item) => {
+  visibleTransactions.forEach((item) => {
     const row = document.createElement('div')
     row.className = 'transaction-row'
 
