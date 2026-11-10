@@ -1,11 +1,13 @@
 
 import './style.css'
 
-const transactions = [
+const defaultTransactions = [
   { name: 'Hostel mess', category: 'Food', amount: 2500, type: 'expense', date: '2026-11-01' },
   { name: 'Pocket money', category: 'Income', amount: 5000, type: 'income', date: '2026-11-01' },
   { name: 'Stationery', category: 'Education', amount: 150, type: 'expense', date: '2026-11-01' },
 ]
+
+let transactions = JSON.parse(localStorage.getItem('transactions')) || defaultTransactions
 
 const app = document.querySelector('#app')
 
@@ -108,7 +110,9 @@ function formatMoney(amount) {
     maximumFractionDigits: 2,
   }).format(amount)
 }
-
+function saveTransactions() {
+  localStorage.setItem('transactions', JSON.stringify(transactions))
+}
 function renderTransactions() {
     const visibleTransactions = getVisibleTransactions()
   const income = visibleTransactions
@@ -170,6 +174,7 @@ form.addEventListener('submit', (event) => {
     category: document.querySelector('#category').value,
     date: document.querySelector('#date').value,
   })
+  saveTransactions()
 
   form.reset()
   document.querySelector('#date').value =
