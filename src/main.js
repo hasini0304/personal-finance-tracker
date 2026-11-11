@@ -1,5 +1,6 @@
 
 import './style.css'
+import Chart from 'chart.js/auto'
 
 const defaultTransactions = [
   { name: 'Hostel mess', category: 'Food', amount: 2500, type: 'expense', date: '2026-11-01' },
@@ -18,11 +19,19 @@ const app = document.querySelector('#app')
 
 app.innerHTML = `
   <header class="topbar">
+  <div class="brand">
     <h1>Pennywise</h1>
     <span>Personal Finance Tracker</span>
-  </header>
+  </div>
 
-  <main class="container">
+  <nav class="navbar">
+    <a href="#dashboard">Dashboard</a>
+    <a href="#analytics">Analytics</a>
+    <a href="#transactions">Transactions</a>
+  </nav>
+</header>
+
+  <main class="container" id="dashboard">
     <section class="welcome">
       <div>
         <p class="eyebrow">YOUR MONEY, YOUR CONTROL</p>
@@ -48,7 +57,34 @@ app.innerHTML = `
         <p>Total expenses</p>
         <h2 id="expenses">₹0</h2>
       </article>
+      </section>
+      <section class="panel analytics" id="analytics">
+  <h2>Monthly Expenses</h2>
+  <p class="chart-subtitle">Your spending over the last 6 months</p>
+
+  <div class="chart-container">
+    <canvas id="monthly-expense-chart"></canvas>
+  </div>
+
+</section>
+ <section class="panel analytics">
+      <h2>Category-wise Spending</h2>
+      <p class="chart-subtitle">See where your money goes</p>
+
+      <div class="chart-container">
+        <canvas id="category-expense-chart"></canvas>
+      </div>
     </section>
+    <section class="panel analytics">
+  <h2>Income vs Expenses</h2>
+  <p class="chart-subtitle">
+    Compare your income and spending over the last 6 months
+  </p>
+
+  <div class="chart-container">
+    <canvas id="income-expense-chart"></canvas>
+  </div>
+</section>
 
     <section class="content">
       <form id="transaction-form" class="panel">
@@ -74,6 +110,7 @@ app.innerHTML = `
           <option>Shopping</option>
           <option>Bills</option>
           <option>Other</option>
+          <option>Income</option>
         </select>
 
         <label for="date">Date</label>
@@ -82,7 +119,7 @@ app.innerHTML = `
         <button type="submit">Add transaction</button>
       </form>
 
-     <section class="panel transactions">
+     <section class="panel transactions" id="transactions">
   <h2>Recent transactions</h2>
 
   <div class="transaction-controls">
@@ -100,6 +137,7 @@ app.innerHTML = `
       <option value="Shopping">Shopping</option>
       <option value="Bills">Bills</option>
       <option value="Other">Other</option>
+       <option value="Income">Income</option>
     </select>
     <select id="type-filter">
   <option value="all">All types</option>
@@ -116,6 +154,9 @@ app.innerHTML = `
 
 const form = document.querySelector('#transaction-form')
 const list = document.querySelector('#transaction-list')
+let monthlyExpenseChart = null
+let categoryExpenseChart = null
+let incomeExpenseChart = null
 const monthFilter = document.querySelector('#month-filter')
 const searchInput = document.querySelector('#search-input')
 const categoryFilter = document.querySelector('#category-filter')
@@ -169,8 +210,225 @@ function saveTransactions() {
   localStorage.setItem('transactions', JSON.stringify(transactions))
 }
 
+
+function updateMonthlyExpenseChart() {
+  const labels = []
+  const monthlyTotals = []
+  const today = new Date()
+
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(today.getFullYear(), today.getMonth() - i, 1)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const monthKey = `${year}-${month}`
+
+    labels.push(
+      date.toLocaleString('en-IN', { month: 'short', year: '2-digit' })
+    )
+
+    const total = transactions
+      .filter((item) =>
+        item.type === 'expense' && item.date.startsWith(monthKey)
+      )
+      .reduce((sum, item) => sum + item.amount, 0)
+
+    monthlyTotals.push(total)
+  }
+
+  if (monthlyExpenseChart) {
+    monthlyExpenseChart.data.labels = labels
+    monthlyExpenseChart.data.datasets[0].data = monthlyTotals
+    monthlyExpenseChart.update()
+    return
+  }
+
+  const ctx = document.querySelector('#monthly-expense-chart')
+
+  monthlyExpenseChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Monthly Expenses',
+        data: monthlyTotals,
+        borderRadius: 6,
+        backgroundColor: '#16a34a',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: (value) => '₹' + value
+          }
+        }
+      }
+    }
+  })
+}
+
+function updateCategoryExpenseChart() {
+  const categoryTotals = {}
+
+  transactions
+    .filter((item) => item.type === 'expense')
+    .forEach((item) => {
+      if (!categoryTotals[item.category]) {
+        categoryTotals[item.category] = 0
+      }
+      categoryTotals[item.category] += item.amount
+    })
+
+  const labels = Object.keys(categoryTotals)
+  const amounts = Object.values(categoryTotals)
+  if (labels.length === 0) {
+  labels.push('No expenses')
+  amounts.push(1)
+}
+
+  const colors = [
+    '#16a34a', '#3b82f6', '#f59e0b',
+    '#ec4899', '#8b5cf6', '#64748b'
+  ]
+
+  if (categoryExpenseChart) {
+    categoryExpenseChart.data.labels = labels
+    categoryExpenseChart.data.datasets[0].data = amounts
+    categoryExpenseChart.update()
+    return
+  }
+
+  const ctx = document.querySelector('#category-expense-chart')
+
+  categoryExpenseChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: amounts,
+        backgroundColor: colors,
+        borderWidth: 2,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' }
+      }
+    }
+  })
+}
+
+function updateIncomeExpenseChart() {
+  const labels = []
+  const incomeTotals = []
+  const expenseTotals = []
+
+  const today = new Date()
+
+  // Calculate income and expenses for the last 6 months
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(
+      today.getFullYear(),
+      today.getMonth() - i,
+      1
+    )
+
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const monthKey = `${year}-${month}`
+
+    labels.push(
+      date.toLocaleString('en-IN', {
+        month: 'short',
+        year: '2-digit'
+      })
+    )
+
+    const monthlyTransactions = transactions.filter(
+      (item) => item.date.startsWith(monthKey)
+    )
+
+    const income = monthlyTransactions
+      .filter((item) => item.type === 'income')
+      .reduce((sum, item) => sum + item.amount, 0)
+
+    const expenses = monthlyTransactions
+      .filter((item) => item.type === 'expense')
+      .reduce((sum, item) => sum + item.amount, 0)
+
+    incomeTotals.push(income)
+    expenseTotals.push(expenses)
+  }
+
+  if (incomeExpenseChart) {
+    incomeExpenseChart.data.labels = labels
+    incomeExpenseChart.data.datasets[0].data = incomeTotals
+    incomeExpenseChart.data.datasets[1].data = expenseTotals
+    incomeExpenseChart.update()
+    return
+  }
+
+  const ctx = document.querySelector('#income-expense-chart')
+
+  incomeExpenseChart = new Chart(ctx, {
+    type: 'bar',
+
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Income',
+          data: incomeTotals,
+          backgroundColor: '#16a34a',
+          borderRadius: 5
+        },
+        {
+          label: 'Expenses',
+          data: expenseTotals,
+          backgroundColor: '#ef4444',
+          borderRadius: 5
+        }
+      ]
+    },
+
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+
+      plugins: {
+        legend: {
+          position: 'bottom'
+        }
+      },
+
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: (value) => '₹' + value
+          }
+        }
+      }
+    }
+  })
+}
+
+
+
 function renderTransactions() {
   const visibleTransactions = getVisibleTransactions()
+    updateMonthlyExpenseChart()
+    updateCategoryExpenseChart()
+    updateIncomeExpenseChart()
 
   const income = visibleTransactions
     .filter((item) => item.type === 'income')
