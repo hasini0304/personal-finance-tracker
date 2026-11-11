@@ -218,3 +218,54 @@ button:hover {
 .edit-btn:hover {
   background-color: #d1dfff;
 }
+/* SEARCH AND FILTER CONTROLS */
+
+.transaction-controls {
+  display: flex;
+  gap: 12px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.transaction-controls input,
+.transaction-controls select {
+  padding: 12px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: white;
+  outline: none;
+}
+
+.transaction-controls input {
+  flex: 1;
+  min-width: 180px;
+}
+
+.transaction-controls select {
+  min-width: 160px;
+  cursor: pointer;
+}
+
+.transaction-controls input:focus,
+.transaction-controls select:focus {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+}
+@media (max-width: 600px) {
+  .transaction-controls {
+    flex-direction: column;
+  }
+
+  .transaction-controls input,
+  .transaction-controls select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+.empty-state {
+  text-align: center;
+  color: #888;
+  padding: 30px 10px;
+  font-size: 14px;
+}

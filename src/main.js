@@ -13,6 +13,7 @@ transactions = transactions.map((item) => ({
   ...item,
   id: item.id || crypto.randomUUID(),
 }))
+saveTransactions()
 const app = document.querySelector('#app')
 
 app.innerHTML = `
@@ -81,10 +82,34 @@ app.innerHTML = `
         <button type="submit">Add transaction</button>
       </form>
 
-      <section class="panel transactions">
-        <h2>Recent transactions</h2>
-        <div id="transaction-list"></div>
-      </section>
+     <section class="panel transactions">
+  <h2>Recent transactions</h2>
+
+  <div class="transaction-controls">
+    <input
+      id="search-input"
+      type="search"
+      placeholder="Search transactions..."
+    >
+
+    <select id="category-filter">
+      <option value="all">All categories</option>
+      <option value="Food">Food</option>
+      <option value="Travel">Travel</option>
+      <option value="Education">Education</option>
+      <option value="Shopping">Shopping</option>
+      <option value="Bills">Bills</option>
+      <option value="Other">Other</option>
+    </select>
+    <select id="type-filter">
+  <option value="all">All types</option>
+  <option value="income">Income</option>
+  <option value="expense">Expense</option>
+</select>
+  </div>
+
+  <div id="transaction-list"></div>
+</section>
     </section>
   </main>
 `
@@ -92,6 +117,9 @@ app.innerHTML = `
 const form = document.querySelector('#transaction-form')
 const list = document.querySelector('#transaction-list')
 const monthFilter = document.querySelector('#month-filter')
+const searchInput = document.querySelector('#search-input')
+const categoryFilter = document.querySelector('#category-filter')
+const typeFilter = document.querySelector('#type-filter')
 let editingTransactionId = null
 
 const today = new Date()
@@ -100,9 +128,31 @@ const currentMonth =
 
 monthFilter.value = currentMonth
 monthFilter.addEventListener('change', renderTransactions)
+searchInput.addEventListener('input', renderTransactions)
+categoryFilter.addEventListener('change', renderTransactions)
+typeFilter.addEventListener('change', renderTransactions)
 
 function getVisibleTransactions() {
-  return transactions.filter((item) => item.date.startsWith(monthFilter.value))
+  const searchText = searchInput.value.trim().toLowerCase()
+  const selectedCategory = categoryFilter.value
+  const selectedType = typeFilter.value
+
+  return transactions.filter((item) => {
+    const matchesMonth = item.date.startsWith(monthFilter.value)
+
+    const matchesSearch =
+      item.name.toLowerCase().includes(searchText) ||
+      item.category.toLowerCase().includes(searchText)
+
+    const matchesCategory =
+      selectedCategory === 'all' ||
+      item.category === selectedCategory
+
+    const matchesType =
+      selectedType === 'all' || item.type === selectedType
+
+    return matchesMonth && matchesSearch && matchesCategory && matchesType
+  })
 }
 
 document.querySelector('#date').value =
@@ -140,6 +190,14 @@ function renderTransactions() {
     formatMoney(expenses)
 
   list.innerHTML = ''
+  if (visibleTransactions.length === 0) {
+  list.innerHTML = `
+    <p class="empty-state">
+      No transactions found. Try changing your search or filters.
+    </p>
+  `
+  return
+}
 
   visibleTransactions.forEach((item) => {
     const row = document.createElement('div')
@@ -219,25 +277,22 @@ form.addEventListener('submit', (event) => {
     date: document.querySelector('#date').value,
   }
 
-  if (editingTransactionId) {
-    transactions = transactions.map((item) =>
-      item.id === editingTransactionId
-        ? { ...item, ...transaction }
-        : item
-    )
-    localStorage.setItem('transactions', JSON.stringify(transactions))
-  } else {
-    transactions.unshift({
-      ...transaction,
-      id: crypto.randomUUID(),
-    })
-    
-  }
-  saveTransactions()
+ if (editingTransactionId) {
+  transactions = transactions.map((item) =>
+    item.id === editingTransactionId
+      ? { ...item, ...transaction }
+      : item
+  )
+} else {
+  transactions.unshift({
+    ...transaction,
+    id: crypto.randomUUID(),
+  })
+}
 
-  editingTransactionId = null
+saveTransactions()
 
-  saveTransactions()
+editingTransactionId = null
   form.reset()
 
   document.querySelector('#date').value =
@@ -255,6 +310,7 @@ function deleteTransaction(id) {
 
   saveTransactions()
   renderTransactions()
+  
 }
 
 
