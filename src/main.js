@@ -9,6 +9,10 @@ const defaultTransactions = [
 
 let transactions = JSON.parse(localStorage.getItem('transactions')) || defaultTransactions
 
+transactions = transactions.map((item) => ({
+  ...item,
+  id: item.id || crypto.randomUUID(),
+}))
 const app = document.querySelector('#app')
 
 app.innerHTML = `
@@ -88,6 +92,7 @@ app.innerHTML = `
 const form = document.querySelector('#transaction-form')
 const list = document.querySelector('#transaction-list')
 const monthFilter = document.querySelector('#month-filter')
+let editingTransactionId = null
 
 const today = new Date()
 const currentMonth =
@@ -113,8 +118,10 @@ function formatMoney(amount) {
 function saveTransactions() {
   localStorage.setItem('transactions', JSON.stringify(transactions))
 }
+
 function renderTransactions() {
-    const visibleTransactions = getVisibleTransactions()
+  const visibleTransactions = getVisibleTransactions()
+
   const income = visibleTransactions
     .filter((item) => item.type === 'income')
     .reduce((total, item) => total + item.amount, 0)
@@ -152,10 +159,47 @@ function renderTransactions() {
     amount.textContent =
       `${item.type === 'income' ? '+' : '−'}${formatMoney(item.amount)}`
 
-    row.append(details, amount)
+    // EDIT BUTTON
+    const editButton = document.createElement('button')
+    editButton.textContent = 'Edit'
+    editButton.className = 'edit-btn'
+
+    editButton.addEventListener('click', () => {
+      editingTransactionId = item.id
+
+      document.querySelector('#name').value = item.name
+      document.querySelector('#amount').value = item.amount
+      document.querySelector('#type').value = item.type
+      document.querySelector('#category').value = item.category
+      document.querySelector('#date').value = item.date
+
+      document.querySelector('#transaction-form button').textContent =
+        'Update transaction'
+
+      document.querySelector('#transaction-form h2').textContent =
+        'Edit transaction'
+
+      document.querySelector('#transaction-form').scrollIntoView({
+        behavior: 'smooth'
+      })
+    })
+
+    // DELETE BUTTON
+    const deleteButton = document.createElement('button')
+    deleteButton.textContent = 'Delete'
+    deleteButton.className = 'delete-btn'
+
+    deleteButton.addEventListener('click', () => {
+      deleteTransaction(item.id)
+    })
+
+    row.append(details, amount, editButton, deleteButton)
     list.append(row)
   })
 }
+
+
+
 
 form.addEventListener('submit', (event) => {
   event.preventDefault()
@@ -167,20 +211,52 @@ form.addEventListener('submit', (event) => {
     return
   }
 
-  transactions.unshift({
+  const transaction = {
     name,
     amount,
     type: document.querySelector('#type').value,
     category: document.querySelector('#category').value,
     date: document.querySelector('#date').value,
-  })
+  }
+
+  if (editingTransactionId) {
+    transactions = transactions.map((item) =>
+      item.id === editingTransactionId
+        ? { ...item, ...transaction }
+        : item
+    )
+    localStorage.setItem('transactions', JSON.stringify(transactions))
+  } else {
+    transactions.unshift({
+      ...transaction,
+      id: crypto.randomUUID(),
+    })
+    
+  }
   saveTransactions()
 
+  editingTransactionId = null
+
+  saveTransactions()
   form.reset()
+
   document.querySelector('#date').value =
     new Date().toISOString().slice(0, 10)
 
+  document.querySelector('#transaction-form button').textContent =
+    'Add transaction'
+    document.querySelector('#transaction-form h2').textContent =
+  'Add a transaction'
+
   renderTransactions()
 })
+function deleteTransaction(id) {
+  transactions = transactions.filter((item) => item.id !== id)
+
+  saveTransactions()
+  renderTransactions()
+}
+
+
 
 renderTransactions()
